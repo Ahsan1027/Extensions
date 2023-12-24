@@ -1,37 +1,20 @@
-const tabs = await chrome.tabs.query({
-  url: [
-    'https://developer.chrome.com/docs/webstore/*',
-    'https://developer.chrome.com/docs/extensions/*'
-  ]
-});
+document.getElementById('likeBtn').addEventListener('click', () => sendMessage('like'));
+document.getElementById('loveBtn').addEventListener('click', () => sendMessage('love'));
+document.getElementById('hahaBtn').addEventListener('click', () => sendMessage('haha'));
+document.getElementById('wowBtn').addEventListener('click', () => sendMessage('wow'));
+document.getElementById('sadBtn').addEventListener('click', () => sendMessage('sad'));
+document.getElementById('angryBtn').addEventListener('click', () => sendMessage('angry'));
 
-const collator = new Intl.Collator();
-tabs.sort((a, b) => collator.compare(a.title, b.title));
-
-const template = document.getElementById('li_template');
-const elements = new Set();
-for (const tab of tabs) {
-  const element = template.content.firstElementChild.cloneNode(true);
-
-  const title = tab.title.split('-')[0].trim();
-  const pathname = new URL(tab.url).pathname.slice('/docs'.length);
-
-  element.querySelector('.title').textContent = title;
-  element.querySelector('.pathname').textContent = pathname;
-  element.querySelector('a').addEventListener('click', async () => {
-    await chrome.tabs.update(tab.id, { active: true });
-    await chrome.windows.update(tab.windowId, { focused: true });
+function sendMessage(reaction) {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const currentTab = tabs[0];
+    if (currentTab.url.includes('facebook.com')) {
+      chrome.storage.local.set({ currentReaction: reaction }, function () {
+        console.log(`Stored reaction: ${reaction}`);
+      });
+      chrome.runtime.sendMessage({ action: reaction });
+    } else {
+      console.log("Not a Facebook URL. Action not sent.");
+    }
   });
-
-  elements.add(element);
 }
-document.querySelector('ul').append(...elements);
-
-const button = document.querySelector('button');
-button.addEventListener('click', async () => {
-  const tabIds = tabs.map(({ id }) => id);
-  if (tabIds.length) {
-    const group = await chrome.tabs.group({ tabIds });
-    await chrome.tabGroups.update(group, { title: 'DOCS' });
-  }
-});
